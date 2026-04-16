@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Familie Infoskærm</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Serif+Display&display=swap');
+
+  :root {
+    --bg:       #b8cdd8;
+    --bg2:      rgba(255,255,255,0.82);
+    --bg3:      rgba(255,255,255,0.5);
+    --text:     #1a2a35;
+    --muted:    #4a6070;
+    --hint:     #7a9aaa;
+    --accent:   #2c5f7a;
+    --radius:   10px;
+    --font:     'DM Sans', sans-serif;
+    --serif:    'DM Serif Display', serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    font-family: var(--font);
+    color: var(--text);
+    overflow: hidden;
+  }
+
+  /* ── SCROLLABLE WRAPPER ── */
+  #app {
+    width: 100%;
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 20px 16px 32px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--bg2);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+
+  .card-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1.6px;
+    color: var(--hint);
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+
+  /* ── UR ── */
+  #clock-wrap { margin-bottom: 10px; }
+  #clock {
+    font-family: var(--serif);
+    font-size: 76px;
+    color: var(--text);
+    line-height: 1;
+    letter-spacing: -2px;
+  }
+  #date-str { font-size: 14px; color: var(--muted); margin-top: 4px; font-weight: 300; }
+
+  /* ── FOTO ── */
+  #photo-card { padding: 0; overflow: hidden; height: 200px; position: relative; background: var(--accent); }
+  #photo-card img {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%; object-fit: cover;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+  }
+  #photo-card img.active { opacity: 1; }
+  #photo-card .no-photo {
+    position: absolute; inset: 0;
+    display: -webkit-flex; display: flex;
+    align-items: center; justify-content: center;
+    flex-direction: column; gap: 8px;
+    color: rgba(255,255,255,0.4); font-size: 13px;
+  }
+
+  /* ── VEJR ── */
+  .weather-row { display: -webkit-flex; display: flex; align-items: baseline; gap: 10px; }
+  #w-temp { font-size: 38px; font-weight: 300; color: var(--text); }
+  #w-desc { font-size: 13px; color: var(--muted); }
+  .forecast { display: -webkit-flex; display: flex; gap: 14px; margin-top: 8px; flex-wrap: wrap; }
+  .fc { font-size: 11px; color: var(--hint); }
+  .fc span { color: var(--text); font-weight: 500; }
+
+  /* ── KALENDER ── */
+  .cal-row {
+    display: -webkit-flex; display: flex;
+    gap: 8px; padding: 5px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    align-items: center; font-size: 12px;
+  }
+  .cal-row:last-child { border: none; }
+  .cal-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .cal-day { color: var(--hint); width: 50px; font-size: 11px; flex-shrink: 0; }
+  .cal-text { color: var(--text); flex: 1; }
+  .cal-who { font-size: 10px; color: var(--hint); }
+
+  /* ── SPOTIFY ── */
+  .sp-row { display: -webkit-flex; display: flex; gap: 12px; align-items: center; }
+  .sp-art {
+    width: 52px; height: 52px; border-radius: 6px;
+    background: var(--accent); flex-shrink: 0;
+    display: -webkit-flex; display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .sp-art img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
+  .sp-art .note { font-size: 22px; color: rgba(255,255,255,0.4); }
+  .sp-info { flex: 1; min-width: 0; }
+  .sp-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sp-artist { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .sp-controls { display: -webkit-flex; display: flex; gap: 10px; margin-top: 10px; align-items: center; }
+  .sp-btn {
+    background: none; border: none;
+    color: var(--muted); cursor: pointer;
+    font-size: 20px; padding: 4px 6px;
+    border-radius: 6px; line-height: 1;
+    -webkit-user-select: none; user-select: none;
+  }
+  .sp-btn.touched, .sp-btn:active { background: rgba(0,0,0,0.08); }
+  .sp-prog { flex: 1; height: 3px; background: rgba(0,0,0,0.1); border-radius: 2px; overflow: hidden; }
+  .sp-fill { height: 100%; background: var(--accent); border-radius: 2px; width: 0%; transition: width 0.4s linear; }
+  .sp-status { font-size: 10px; color: var(--hint); margin-top: 6px; text-align: center; }
+
+  /* ── TODO ── */
+  .todo-grid { display: -webkit-flex; display: flex; gap: 10px; }
+  .todo-col { flex: 1; }
+  .todo-col-title { font-size: 9px; text-transform: uppercase; letter-spacing: 1.4px; color: var(--hint); font-weight: 500; margin-bottom: 8px; }
+  .todo-item {
+    display: -webkit-flex; display: flex;
+    align-items: center; gap: 8px;
+    padding: 4px 0; font-size: 12px; color: var(--text);
+    cursor: pointer; border: none; background: none;
+    width: 100%; text-align: left; font-family: var(--font);
+  }
+  .todo-item.done .todo-label { text-decoration: line-through; color: var(--hint); }
+  .todo-check {
+    width: 14px; height: 14px; border-radius: 3px;
+    border: 1.5px solid var(--hint); flex-shrink: 0;
+    display: -webkit-flex; display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .todo-item.done .todo-check { background: var(--hint); border-color: var(--hint); }
+  .todo-add { font-size: 11px; color: var(--hint); margin-top: 6px; cursor: pointer; border: none; background: none; font-family: var(--font); padding: 2px 0; }
+
+  /* ── TIMETIMER ── */
+  .timer-wrap { display: -webkit-flex; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  #timer-svg { width: 160px; height: 160px; }
+  .timer-display { font-family: var(--serif); font-size: 36px; color: var(--text); letter-spacing: -1px; }
+  .timer-presets { display: -webkit-flex; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .timer-preset {
+    padding: 6px 14px; border-radius: 20px;
+    border: 1.5px solid var(--hint);
+    background: none; color: var(--muted);
+    font-size: 12px; cursor: pointer;
+    font-family: var(--font);
+    transition: all 0.15s;
+  }
+  .timer-preset.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .timer-preset:active { opacity: 0.7; }
+  .timer-btns { display: -webkit-flex; display: flex; gap: 10px; }
+  .timer-btn {
+    padding: 9px 22px; border-radius: 8px;
+    border: 1.5px solid var(--hint);
+    background: none; color: var(--muted);
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; font-family: var(--font);
+    transition: all 0.15s;
+  }
+  .timer-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .timer-btn:active { opacity: 0.7; }
+  .timer-ring-bg { fill: none; stroke: rgba(0,0,0,0.08); stroke-width: 12; }
+  .timer-ring-fill { fill: none; stroke: var(--accent); stroke-width: 12; stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
+  .timer-ring-fill.urgent { stroke: #c03a2a; }
+
+  /* ── INPUT OVERLAY ── */
+  #overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45); z-index: 100;
+    align-items: center; justify-content: center;
+  }
+  #overlay.show { display: -webkit-flex; display: flex; }
+  #overlay-box {
+    background: #fff; border-radius: 14px;
+    padding: 24px; width: 280px;
+  }
+  #overlay-label { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+  #overlay-input {
+    width: 100%; border: 1.5px solid #ddd; border-radius: 8px;
+    padding: 10px 12px; font-size: 14px;
+    font-family: var(--font); color: var(--text);
+    outline: none; margin-bottom: 12px;
+  }
+  #overlay-input:focus { border-color: var(--accent); }
+  .overlay-btns { display: -webkit-flex; display: flex; gap: 8px; }
+  .overlay-btns button {
+    flex: 1; padding: 10px; border-radius: 8px;
+    border: none; font-size: 13px; font-family: var(--font);
+    cursor: pointer; font-weight: 500;
+  }
+  #overlay-ok { background: var(--accent); color: #fff; }
+  #overlay-cancel { background: #eee; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div id="overlay">
+  <div id="overlay-box">
+    <div id="overlay-label">Ny opgave</div>
+    <input id="overlay-input" type="text" placeholder="Skriv her...">
+    <div class="overlay-btns">
+      <button id="overlay-ok">Tilføj</button>
+      <button id="overlay-cancel">Annuller</button>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+
+  <!-- UR & DATO -->
+  <div id="clock-wrap">
+    <div id="clock">--:--</div>
+    <div id="date-str">loader...</div>
+  </div>
+
+  <!-- FOTO SLIDESHOW — Google Fotos album -->
+  <div class="card" id="photo-card" style="padding:0;overflow:hidden;height:220px;background:#1a2a35">
+    <div class="pa-gallery-player-widget"
+      style="width:100%;height:220px;display:block"
+      data-link="https://photos.app.goo.gl/aAu9zewmRgjCTkjQ7"
+      data-autoplay="1"
+      data-delay="8">
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/publicalbum@latest/embed-ui.min.js" async></script>
+
+  <!-- VEJR -->
+  <div class="card">
+    <div class="card-label">Vejr &#8212; <span id="w-city">Skanderborg</span></div>
+    <div class="weather-row">
+      <div id="w-temp">--&deg;</div>
+      <div id="w-desc">indl&#230;ser...</div>
+    </div>
+    <div class="forecast" id="w-forecast"></div>
+  </div>
+
+  <!-- KALENDER -->
+  <div class="card">
+    <div class="card-label">Familiekalender</div>
+    <div id="cal-list"><div style="font-size:12px;color:var(--hint)">Udfyld iCal URL i CONFIG</div></div>
+  </div>
+
+  <!-- SPOTIFY -->
+  <div class="card">
+    <div class="card-label">Spotify</div>
+    <div class="sp-row">
+      <div class="sp-art" id="sp-art"><div class="note">&#9835;</div></div>
+      <div class="sp-info">
+        <div class="sp-title" id="sp-title">Ikke forbundet</div>
+        <div class="sp-artist" id="sp-artist">Udfyld proxy URL i CONFIG</div>
+      </div>
+    </div>
+    <div class="sp-controls">
+      <button class="sp-btn" id="sp-prev"
+        ontouchstart="this.classList.add('touched')"
+        ontouchend="this.classList.remove('touched')"
+        onclick="spCmd('previous')">&#9664;&#9664;</button>
+      <button class="sp-btn" id="sp-play"
+        ontouchstart="this.classList.add('touched')"
+        ontouchend="this.classList.remove('touched')"
+        onclick="spCmd('play-pause')">&#9654;</button>
+      <button class="sp-btn" id="sp-next"
+        ontouchstart="this.classList.add('touched')"
+        ontouchend="this.classList.remove('touched')"
+        onclick="spCmd('next')">&#9654;&#9654;</button>
+      <div class="sp-prog"><div class="sp-fill" id="sp-fill"></div></div>
+    </div>
+  </div>
+
+  <!-- TODO LISTER -->
+  <div class="card">
+    <div class="card-label">Lister</div>
+    <div class="todo-grid" id="todo-grid"></div>
+  </div>
+
+  <!-- TIMETIMER -->
+  <div class="card">
+    <div class="card-label">Timetimer</div>
+    <div class="timer-wrap">
+      <svg id="timer-svg" viewBox="0 0 160 160">
+        <circle class="timer-ring-bg" cx="80" cy="80" r="68"/>
+        <circle class="timer-ring-fill" id="timer-ring" cx="80" cy="80" r="68"
+          stroke-dasharray="427" stroke-dashoffset="0"
+          transform="rotate(-90 80 80)"/>
+        <text x="80" y="88" text-anchor="middle"
+          style="font-family:'DM Serif Display',serif;font-size:28px;fill:#1a2a35"
+          id="timer-text">0:00</text>
+      </svg>
+      <div class="timer-presets" id="timer-presets">
+        <button class="timer-preset" onclick="setTimer(5)">5 min</button>
+        <button class="timer-preset" onclick="setTimer(10)">10 min</button>
+        <button class="timer-preset" onclick="setTimer(15)">15 min</button>
+        <button class="timer-preset" onclick="setTimer(20)">20 min</button>
+        <button class="timer-preset" onclick="setTimer(30)">30 min</button>
+        <button class="timer-preset" onclick="setTimer(45)">45 min</button>
+        <button class="timer-preset" onclick="setTimer(60)">1 time</button>
+      </div>
+      <div class="timer-btns">
+        <button class="timer-btn primary" id="timer-start" onclick="timerToggle()">Start</button>
+        <button class="timer-btn" onclick="timerReset()">Nulstil</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end #app -->
+
+<script>
+/* =========================================================
+   KONFIGURATION
+   ========================================================= */
+var CONFIG = {
+
+  // Vejr — din by (koordinater)
+  weatherLat:  56.05,
+  weatherLon:  9.93,
+  weatherCity: 'Skanderborg',
+
+  // iCal kalender-links (fra iCloud, Google osv.)
+  // Find iCloud iCal link: Kalender-appen → Del kalender → Kopier link
+  icalUrls: [
+    // { url: 'webcal://p12-caldav.icloud.com/published/2/...', color: '#7a9aaa', name: 'Familie' },
+    // { url: 'webcal://p12-caldav.icloud.com/published/2/...', color: '#c0856a', name: 'Partner' },
+  ],
+
+  // Spotify proxy URL (fra spotify-proxy.js)
+  spotifyProxy: '',  // f.eks. 'http://192.168.1.42:3000'
+
+  // ── TODOIST ─────────────────────────────────────────────
+  // 1. Opret gratis konto på todoist.com
+  // 2. Gå til todoist.com/app/settings/integrations/developer
+  // 3. Kopiér din API token herind
+  todoistToken: '',  // '<din API token her>'
+
+  // Hvilke projekter skal vises? Skriv navne præcis som i Todoist.
+  // Lad listen være [] for at vise ALLE projekter
+  todoistProjects: [],
+};
+
+/* =========================================================
+   UR
+   ========================================================= */
+function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+function tickClock() {
+  var d = new Date();
+  document.getElementById('clock').textContent =
+    pad(d.getHours()) + ':' + pad(d.getMinutes());
+  var days   = ['søndag','mandag','tirsdag','onsdag','torsdag','fredag','lørdag'];
+  var months = ['januar','februar','marts','april','maj','juni',
+                'juli','august','september','oktober','november','december'];
+  document.getElementById('date-str').textContent =
+    days[d.getDay()] + ' ' + d.getDate() + '. ' + months[d.getMonth()];
+}
+tickClock();
+setInterval(tickClock, 1000);
+
+
+
+/* =========================================================
+   VEJR (Open-Meteo, gratis)
+   ========================================================= */
+var WMO = {
+  0:'solskin',1:'næsten klar',2:'delvis skyet',3:'overskyet',
+  45:'tåge',48:'tåge',51:'let regn',53:'regn',55:'kraftig regn',
+  61:'let regn',63:'regn',65:'kraftig regn',
+  71:'let sne',73:'sne',75:'kraftig sne',
+  80:'byger',81:'regnbyger',82:'kraftige byger',
+  95:'torden',96:'torden',99:'kraftig torden'
+};
+
+function loadWeather() {
+  var url = 'https://api.open-meteo.com/v1/forecast' +
+    '?latitude=' + CONFIG.weatherLat +
+    '&longitude=' + CONFIG.weatherLon +
+    '&current_weather=true' +
+    '&daily=temperature_2m_max,temperature_2m_min,weathercode' +
+    '&timezone=Europe%2FCopenhagen&forecast_days=5';
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', url, true);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4 || xhr.status !== 200) return;
+    var d = JSON.parse(xhr.responseText);
+    var cw = d.current_weather;
+    document.getElementById('w-temp').textContent = Math.round(cw.temperature) + '°';
+    document.getElementById('w-desc').textContent = WMO[cw.weathercode] || '';
+    document.getElementById('w-city').textContent = CONFIG.weatherCity;
+    var fc = document.getElementById('w-forecast');
+    fc.innerHTML = '';
+    var days = ['søn','man','tir','ons','tor','fre','lør'];
+    for (var i = 1; i < Math.min(5, d.daily.time.length); i++) {
+      var day = new Date(d.daily.time[i]);
+      var el = document.createElement('div');
+      el.className = 'fc';
+      el.innerHTML = days[day.getDay()] + '<br><span>' +
+        Math.round(d.daily.temperature_2m_max[i]) + '°</span>/' +
+        Math.round(d.daily.temperature_2m_min[i]) + '°';
+      fc.appendChild(el);
+    }
+  };
+  xhr.send();
+}
+loadWeather();
+setInterval(loadWeather, 600000);
+
+/* =========================================================
+   KALENDER (iCal via CORS proxy)
+   ========================================================= */
+function loadCal() {
+  var list = document.getElementById('cal-list');
+  if (!CONFIG.icalUrls || CONFIG.icalUrls.length === 0) return;
+  list.innerHTML = '<div style="font-size:12px;color:var(--hint)">Indlæser...</div>';
+  var allEvents = [];
+  var loaded = 0;
+  var now = new Date();
+
+  CONFIG.icalUrls.forEach(function(cal) {
+    // Konverter webcal:// til https://
+    var url = cal.url.replace('webcal://', 'https://');
+    // Brug CORS proxy til at hente iCal
+    var proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', proxyUrl, true);
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState !== 4) return;
+      loaded++;
+      if (xhr.status === 200) {
+        var events = parseICal(xhr.responseText, cal.color, cal.name);
+        allEvents = allEvents.concat(events);
+      }
+      if (loaded === CONFIG.icalUrls.length) renderCal(allEvents);
+    };
+    xhr.send();
+  });
+}
+
+function parseICal(text, color, calName) {
+  var events = [];
+  var lines = text.replace(/\r\n /g, '').replace(/\r\n/g, '\n').split('\n');
+  var ev = null;
+  for (var i = 0; i < lines.length; i++) {
+    var l = lines[i];
+    if (l === 'BEGIN:VEVENT') { ev = {}; }
+    else if (l === 'END:VEVENT' && ev) {
+      if (ev.start) { ev.color = color; ev.calName = calName; events.push(ev); }
+      ev = null;
+    } else if (ev) {
+      if (l.indexOf('SUMMARY') === 0) ev.title = l.split(':').slice(1).join(':');
+      else if (l.indexOf('DTSTART') === 0) ev.start = parseICalDate(l.split(':')[1]);
+    }
+  }
+  return events;
+}
+
+function parseICalDate(s) {
+  if (!s) return null;
+  s = s.trim();
+  if (s.length === 8) {
+    return new Date(s.substr(0,4), parseInt(s.substr(4,2))-1, s.substr(6,2));
+  }
+  return new Date(
+    s.substr(0,4), parseInt(s.substr(4,2))-1, s.substr(6,2),
+    s.substr(9,2), s.substr(11,2)
+  );
+}
+
+function renderCal(events) {
+  var list = document.getElementById('cal-list');
+  var now = new Date();
+  var week = new Date(now.getTime() + 7*24*60*60*1000);
+  var days = ['søn','man','tir','ons','tor','fre','lør'];
+
+  var upcoming = events.filter(function(e) {
+    return e.start && e.start >= now && e.start <= week;
+  }).sort(function(a,b) { return a.start - b.start; }).slice(0, 6);
+
+  if (upcoming.length === 0) {
+    list.innerHTML = '<div style="font-size:12px;color:var(--hint)">Ingen kommende begivenheder</div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  upcoming.forEach(function(e) {
+    var d = e.start;
+    var time = (d.getHours() === 0 && d.getMinutes() === 0)
+      ? 'hele dagen'
+      : pad(d.getHours()) + ':' + pad(d.getMinutes());
+    var row = document.createElement('div');
+    row.className = 'cal-row';
+    row.innerHTML =
+      '<div class="cal-dot" style="background:' + e.color + '"></div>' +
+      '<div class="cal-day">' + days[d.getDay()] + ' ' + time + '</div>' +
+      '<div class="cal-text">' + (e.title || '') + '</div>' +
+      '<div class="cal-who">' + e.calName + '</div>';
+    list.appendChild(row);
+  });
+}
+
+loadCal();
+setInterval(loadCal, 300000);
+
+/* =========================================================
+   SPOTIFY
+   ========================================================= */
+function loadSpotify() {
+  if (!CONFIG.spotifyProxy) return;
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', CONFIG.spotifyProxy + '/current', true);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4 || xhr.status !== 200) return;
+    var d = JSON.parse(xhr.responseText);
+    document.getElementById('sp-title').textContent  = d.title  || '—';
+    document.getElementById('sp-artist').textContent = d.artist || '—';
+    document.getElementById('sp-play').innerHTML = d.is_playing ? '&#9646;&#9646;' : '&#9654;';
+    if (d.duration_ms > 0) {
+      var pct = Math.round((d.progress_ms / d.duration_ms) * 100);
+      document.getElementById('sp-fill').style.width = pct + '%';
+    }
+    if (d.album_art) {
+      document.getElementById('sp-art').innerHTML =
+        '<img src="' + d.album_art + '" alt="">';
+    }
+  };
+  xhr.send();
+}
+
+function spCmd(cmd) {
+  if (!CONFIG.spotifyProxy) return;
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', CONFIG.spotifyProxy + '/' + cmd, true);
+  xhr.send();
+  setTimeout(loadSpotify, 600);
+}
+
+if (CONFIG.spotifyProxy) {
+  loadSpotify();
+  setInterval(loadSpotify, 5000);
+}
+
+/* =========================================================
+   TODOIST
+   ========================================================= */
+var TODOIST_PROJECTS = [];   // { id, name, color }
+var TODOIST_TASKS    = {};   // { projectId: [tasks] }
+var overlayTarget    = null;
+
+var TODOIST_COLORS = {
+  'berry_red':'#b8256f','red':'#db4035','orange':'#ff9933',
+  'yellow':'#fad000','olive_green':'#afb83b','lime_green':'#7ecc49',
+  'green':'#299438','mint_green':'#6accbc','teal':'#158fad',
+  'sky_blue':'#14aaf5','light_blue':'#96c3eb','blue':'#4073ff',
+  'grape':'#884dff','violet':'#af38eb','lavender':'#eb96eb',
+  'magenta':'#e05194','salmon':'#ff8d85','charcoal':'#808080',
+  'grey':'#b8b8b8','taupe':'#ccac93'
+};
+
+function todoistXHR(method, endpoint, body, cb) {
+  if (!CONFIG.todoistToken) return;
+  var xhr = new XMLHttpRequest();
+  xhr.open(method, 'https://api.todoist.com/rest/v2/' + endpoint, true);
+  xhr.setRequestHeader('Authorization', 'Bearer ' + CONFIG.todoistToken);
+  if (body) xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4) return;
+    if (xhr.status >= 200 && xhr.status < 300) {
+      try { cb(null, JSON.parse(xhr.responseText || '{}')); }
+      catch(e) { cb(null, {}); }
+    } else { cb(xhr.status); }
+  };
+  xhr.send(body ? JSON.stringify(body) : null);
+}
+
+function loadTodoist() {
+  if (!CONFIG.todoistToken) {
+    document.getElementById('todo-grid').innerHTML =
+      '<div style="font-size:12px;color:var(--hint);padding:4px 0">Udfyld todoistToken i CONFIG for at vise Todoist-lister</div>';
+    return;
+  }
+  todoistXHR('GET', 'projects', null, function(err, projects) {
+    if (err) return;
+    // Filtrer projekter hvis ønsket
+    var filtered = CONFIG.todoistProjects.length > 0
+      ? projects.filter(function(p) {
+          return CONFIG.todoistProjects.indexOf(p.name) !== -1;
+        })
+      : projects.filter(function(p) { return !p.is_inbox_project; });
+
+    TODOIST_PROJECTS = filtered;
+    TODOIST_TASKS = {};
+    var loaded = 0;
+
+    if (filtered.length === 0) {
+      renderTodoist();
+      return;
+    }
+
+    filtered.forEach(function(project) {
+      todoistXHR('GET', 'tasks?project_id=' + project.id, null, function(err2, tasks) {
+        TODOIST_TASKS[project.id] = err2 ? [] : tasks.filter(function(t) { return !t.is_completed; });
+        loaded++;
+        if (loaded === filtered.length) renderTodoist();
+      });
+    });
+  });
+}
+
+function renderTodoist() {
+  var grid = document.getElementById('todo-grid');
+  grid.innerHTML = '';
+  TODOIST_PROJECTS.forEach(function(project) {
+    var tasks = TODOIST_TASKS[project.id] || [];
+    var col = document.createElement('div');
+    col.className = 'todo-col';
+    var dotColor = TODOIST_COLORS[project.color] || '#7a9aaa';
+    col.innerHTML = '<div class="todo-col-title" style="display:flex;align-items:center;gap:5px">' +
+      '<span style="width:7px;height:7px;border-radius:50%;background:' + dotColor + ';display:inline-block;flex-shrink:0"></span>' +
+      project.name + '</div>';
+
+    if (tasks.length === 0) {
+      var empty = document.createElement('div');
+      empty.style.cssText = 'font-size:11px;color:var(--hint);padding:4px 0';
+      empty.textContent = 'Ingen opgaver';
+      col.appendChild(empty);
+    }
+
+    tasks.forEach(function(task) {
+      var btn = document.createElement('button');
+      btn.className = 'todo-item';
+      btn.innerHTML =
+        '<div class="todo-check"></div>' +
+        '<span class="todo-label">' + task.content + '</span>';
+      btn.addEventListener('touchstart', function() {});
+      btn.onclick = (function(taskId, btn2) { return function() {
+        btn2.className = 'todo-item done';
+        // Fuldfør opgaven i Todoist
+        todoistXHR('POST', 'tasks/' + taskId + '/close', {}, function() {
+          setTimeout(loadTodoist, 800);
+        });
+      }; })(task.id, btn);
+      col.appendChild(btn);
+    });
+
+    var addBtn = document.createElement('button');
+    addBtn.className = 'todo-add';
+    addBtn.textContent = '+ Tilføj';
+    addBtn.onclick = (function(pid, pname) {
+      return function() { openOverlay(pid, pname); };
+    })(project.id, project.name);
+    col.appendChild(addBtn);
+    grid.appendChild(col);
+  });
+}
+
+function openOverlay(projectId, projectName) {
+  overlayTarget = projectId;
+  document.getElementById('overlay-label').textContent = 'Ny opgave i ' + projectName;
+  document.getElementById('overlay-input').value = '';
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('overlay-input').focus();
+}
+
+document.getElementById('overlay-ok').addEventListener('click', function() {
+  var val = document.getElementById('overlay-input').value.trim();
+  if (val && overlayTarget) {
+    todoistXHR('POST', 'tasks', { content: val, project_id: overlayTarget }, function() {
+      setTimeout(loadTodoist, 500);
+    });
+  }
+  document.getElementById('overlay').classList.remove('show');
+  overlayTarget = null;
+});
+
+document.getElementById('overlay-cancel').addEventListener('click', function() {
+  document.getElementById('overlay').classList.remove('show');
+  overlayTarget = null;
+});
+
+loadTodoist();
+setInterval(loadTodoist, 60000);
+
+/* =========================================================
+   TIMETIMER
+   ========================================================= */
+var TIMER = {
+  total:    0,
+  remaining: 0,
+  running:  false,
+  interval: null,
+  CIRCUMFERENCE: 427  // 2 * PI * 68
+};
+
+function setTimer(minutes) {
+  timerReset();
+  TIMER.total = minutes * 60;
+  TIMER.remaining = TIMER.total;
+  updateTimerUI();
+  // Highlight aktiv preset
+  var btns = document.querySelectorAll('.timer-preset');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].className = 'timer-preset' +
+      (parseInt(btns[i].textContent) === minutes || btns[i].textContent === minutes + ' min' ? ' active' : '');
+  }
+}
+
+function timerToggle() {
+  if (TIMER.total === 0) return;
+  if (TIMER.running) {
+    clearInterval(TIMER.interval);
+    TIMER.running = false;
+    document.getElementById('timer-start').textContent = 'Fortsæt';
+  } else {
+    TIMER.running = true;
+    document.getElementById('timer-start').textContent = 'Pause';
+    TIMER.interval = setInterval(function() {
+      if (TIMER.remaining <= 0) {
+        clearInterval(TIMER.interval);
+        TIMER.running = false;
+        document.getElementById('timer-start').textContent = 'Start';
+        timerDone();
+        return;
+      }
+      TIMER.remaining--;
+      updateTimerUI();
+    }, 1000);
+  }
+}
+
+function timerReset() {
+  clearInterval(TIMER.interval);
+  TIMER.running = false;
+  TIMER.remaining = TIMER.total;
+  document.getElementById('timer-start').textContent = 'Start';
+  var btns = document.querySelectorAll('.timer-preset');
+  for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+  updateTimerUI();
+}
+
+function updateTimerUI() {
+  var r = TIMER.remaining;
+  var mins = Math.floor(r / 60);
+  var secs = r % 60;
+  document.getElementById('timer-text').textContent = mins + ':' + pad(secs);
+
+  var pct = TIMER.total > 0 ? r / TIMER.total : 0;
+  var offset = TIMER.CIRCUMFERENCE * (1 - pct);
+  var ring = document.getElementById('timer-ring');
+  ring.style.strokeDashoffset = offset;
+  ring.className = 'timer-ring-fill' + (r <= 60 && r > 0 ? ' urgent' : '');
+}
+
+function timerDone() {
+  // Visuel puls når tid er udløbet
+  var ring = document.getElementById('timer-ring');
+  var count = 0;
+  var flash = setInterval(function() {
+    ring.style.stroke = count % 2 === 0 ? '#c03a2a' : 'transparent';
+    count++;
+    if (count > 10) {
+      clearInterval(flash);
+      ring.style.stroke = '';
+      ring.className = 'timer-ring-fill';
+    }
+  }, 300);
+}
+
+updateTimerUI();
+
+/* =========================================================
+   TOUCH FEEDBACK PÅ CARDS
+   ========================================================= */
+var cards = document.querySelectorAll('.card');
+for (var ci = 0; ci < cards.length; ci++) {
+  (function(c) {
+    c.addEventListener('touchstart', function() { c.style.background = 'rgba(255,255,255,0.65)'; });
+    c.addEventListener('touchend',   function() {
+      setTimeout(function() { c.style.background = ''; }, 200);
+    });
+  })(cards[ci]);
+}
+</script>
+</body>
+</html>
